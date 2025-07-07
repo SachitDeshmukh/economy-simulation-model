@@ -1,204 +1,205 @@
-;; Economic Production : private property model
+;; Define breeds (agent types)
+breed [workers worker]
+breed [owners owner]
+breed [assets asset]
 
-;; Changes to this model :
-;; 1. the capital is too productive. Change the calculations
-;; 2. add sliders for distribution of revenue
-;; 3. adding subsistance - amount to be deducted from income ?
-;; 4. set min level of capital needed to sustain the asset
+;; Worker attributes:
+;; - labour: ability to contribute to production
+;; - income: received from owners as wages
+;; - wealth: accumulates over time
+workers-own [labour income wealth]
 
-;; The model has three agent types.
-breed [ workers worker ]
-breed [ owners owner ]
-breed [ assets asset ]
+;; Owner attributes:
+;; - Olabour: owner’s own labour + borrowed labour
+;; - income: from revenue share
+;; - wealth: accumulated over time
+;; - capital: used to boost asset productivity
+;; - wages: amount set aside for workers
+;; - pwwage: per-worker wage
+owners-own [Olabour income wealth capital wages pwwage]
 
-;; The first agent type is workers. These agents have the properties of
-;; Labour  ( essential for economic production , inherent property)
-;; Wealth ( accumulation of income from  the wage given by employers )
-workers-own [ labour income wealth ]
+;; Asset attributes:
+;; - productivity: determines revenue from labour and capital
+;; - revenue: revenue generated in current tick
+;; - pr: previous revenue
+;; - cr: current revenue
+assets-own [productivity revenue pr cr]
 
-;; The second agent type is owners. These agents have the properties of
-;; Labour ( essential for economic production, inherent property )
-;; Capital  ( essential for economic production, comes from revenue  )
-;; Wealth ( accumulation of income coming from revenue )
-owners-own [ Olabour income wealth capital wages pwwage ]
-
-;; The third agent type is assets. These agents have the property of
-;; Productivity ( which enables production and leads to generation of revenue )
-assets-own [ productivity revenue pr cr ] ;; Past revenue and current revenue
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; SETUP PROCEDURE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to setup
-clear-all
-reset-ticks
+  clear-all
+  reset-ticks
 
-ask patches [ set pcolor white ]
+  ;; Set distribution percentages
+  set percent-capital 30
+  set percent-wages 50
+  set percent-owner-income 20
 
-;; creating workers with a labour value of 0 - 20 and wealth value of 0. Distributed in the left half of the field
+  ;; Set environment and shapes
+  ask patches [ set pcolor white ]
+  set-default-shape workers "circle"
+  set-default-shape owners "square"
+  set-default-shape assets "pentagon"
+
+  ;; Create workers on left side of field
   create-workers num-workers [
-set shape "circle"
-set size 1
+    set size 1
     set color blue
-setxy random-float min-pxcor random-pycor
-set labour random 20
-set wealth 0
+    setxy random-float min-pxcor random-pycor
+    set labour random 20
+    set wealth 0
+    set income 0
   ]
 
- ;; creating owners with a labour value of 0 - 20 and capital value of 0 - 100. Wealth and wages at 0. Distributed in the center of the field
-create-owners num-owners [
-set shape "square"
-set size 2
+  ;; Create owners in center of field
+  create-owners num-owners [
+    set size 2
     set color yellow
-setxy 0 random-pycor
-set Olabour random 20
-set wealth 0
-set capital random 20
-set wages 0
-set pwwage 0
+    setxy 0 random-pycor
+    set Olabour random 20
+    set capital random 20
+    set wealth 0
+    set wages 0
+    set pwwage 0
+    set income 0
   ]
 
-;; creating assets with a productivity value of 0 - 25 and revenue of o. Distributed in the right side of the field
-create-assets num-assets [
-    set shape "pentagon"
+  ;; Create assets on right side of field
+  create-assets num-assets [
     set size 2
     set color red
     setxy random-float max-pxcor random-pycor
     set productivity random 25
     set revenue 0
+    set pr 0
+    set cr 0
   ]
 
-;; creating links within the groups
-  ask workers [ create-link-with min-one-of owners [distance myself]]
+  ;; Create links between workers and owners, and assets and owners
+  ask workers [ create-link-with min-one-of owners [distance myself] ]
   ask assets [ create-link-with one-of owners ]
-
 end
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; MAIN LOOP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to go
-  collect-labor
-  generate-revenue
-  distribute-revenue
- tick
+  collect-labor         ;; Workers give labour to owners
+  generate-revenue      ;; Assets use labour and capital to generate revenue
+  distribute-revenue    ;; Revenue distributed to capital, wages, income
+  tick
 end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; STEP 1: COLLECT LABOUR
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to collect-labor
   ask owners [
-    set wages 0
-    let p sum [labour] of in-link-neighbors with [ color = blue ]
-    set Olabour Olabour + p
+    set wages 0  ;; Reset wages
+    ;; Aggregate all labour from linked workers
+    let labor-sum sum [labour] of in-link-neighbors with [color = blue]
+    set Olabour Olabour + labor-sum
   ]
 end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; STEP 2: GENERATE REVENUE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to generate-revenue
   ask assets [
-    set pr revenue
-    set revenue 0
-    let L sum [Olabour] of in-link-neighbors with [ color = yellow ]
-    let C sum [capital] of in-link-neighbors with [ color = yellow ]
-    let j C / 1000
-    set productivity productivity + j
-    set revenue productivity * L
-    set cr revenue
-    let d sum [capital] of in-link-neighbors with [ color = yellow ]
-    set d d = 0
+    set pr revenue  ;; Store previous revenue
+    let L sum [Olabour] of in-link-neighbors with [color = yellow]
+    let C sum [capital] of in-link-neighbors with [color = yellow]
+    set productivity productivity + (C / 1000)  ;; Capital boosts productivity
+    set revenue productivity * L                ;; Revenue is productivity × labour
+    set cr revenue                              ;; Store current revenue
   ]
 
-ask owners [
-  let p sum [labour] of in-link-neighbors with [ color = blue ]
-    set Olabour Olabour -  p
+  ;; Reset owner labour after contribution
+  ask owners [
+    let p sum [labour] of in-link-neighbors with [color = blue]
+    set Olabour Olabour - p
   ]
 end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; STEP 3: DISTRIBUTE REVENUE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to distribute-revenue
-
+  ;; Owners collect revenue and divide it
   ask owners [
-        if count in-link-neighbors with [ color = blue ] > 0 [
-    let z sum [revenue] of in-link-neighbors with [ color = red]
-    set capital z * percent-capital / 100
-    set wages z * percent-wages / 100
-    set income z * percent-owner-income / 100
-    set wealth wealth + income
-    if capital = 0 [ set color grey ]
-  ]
-    if count in-link-neighbors with [ color = blue ] = 0 [
-    let z sum [revenue] of in-link-neighbors with [ color = red]
-    set capital z * percent-capital / 100
-    set wages z * percent-wages / 100
-    set income z * percent-owner-income / 100
-    set income income + wages
-    set wages 0
-    set wealth wealth + income
-    if capital = 0 [ set color grey ]
-    ]
-  ]
+    let total-revenue sum [revenue] of in-link-neighbors with [color = red]
 
-  ask owners [
-    let n count in-link-neighbors with [ color = blue ]
+    ;; Allocate portions of revenue
+    set capital total-revenue * percent-capital / 100
+    set wages total-revenue * percent-wages / 100
+    set income total-revenue * percent-owner-income / 100
+    set wealth wealth + income
+
+    ;; Determine per-worker wage
+    let n count in-link-neighbors with [color = blue]
     if n > 0 [
-    set pwwage wages / n ]
+      set pwwage wages / n
+    ]
+    if n = 0 [
+      ;; no blue-linked workers
+      set income income + wages
+      set wages 0
+    ]
+
+    ;; Optional: visual cue for owners without capital
+    if capital = 0 [ set color grey ]
   ]
 
- ask workers [
-    let a sum [pwwage] of in-link-neighbors with [ color = yellow ]
+  ;; Workers receive wages
+  ask workers [
+    let a sum [pwwage] of in-link-neighbors with [color = yellow]
     set income a
     set wealth wealth + a
+
+    ;; Optional: visual cue for bankrupt workers
     if wealth = 0 [ set color grey ]
   ]
-
 end
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; REPORTERS FOR ANALYSIS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 to-report avg-worker-income
-    report sum [income] of workers / count workers
+  report sum [income] of workers / count workers
 end
 
 to-report avg-owner-income
-    report sum [income] of owners / count owners
+  report sum [income] of owners / count owners
 end
 
 to-report avg-worker-wealth
-    report sum [wealth] of workers / count workers
+  report sum [wealth] of workers / count workers
 end
 
 to-report avg-owner-wealth
-    report sum [wealth] of owners / count owners
+  report sum [wealth] of owners / count owners
 end
 
 to-report pertick-growth
-  report sum [ cr ] of assets - sum [ pr ] of assets
+  ;; Absolute revenue growth in current tick
+  report sum [cr] of assets - sum [pr] of assets
 end
 
 to-report pt-growth-rate
-  let b  pertick-growth / sum [ pr ] of assets
-  report b * 100
+  ;; Percentage growth from previous tick to current tick
+  let prev sum [pr] of assets
+  if prev = 0 [ report 0 ]
+  report (pertick-growth / prev) * 100
 end
-
-;; Timestep
-
-;;Workers give their labour to an owner
-;;Owners takes the labour given by workers
-;;Owners inspect their own labour and capital
-;;Owners give the total labour and capital to the asset
-;;The asset takes the total labour and capital
-;;Based on the productivity, asset generates revenue
-;;Asset gives the revenue to owners
-;;Owners take this revenue and divide it three ways - capital, wealth and wages
-;;Owners add to their capital from the revenue.
-;Owners add to their wealth from the revenue
-;Owners deduct a certain amount of  wealth for sustaining livelihood (this restores their labour)
-;Workers get their wealth from wages
-;Workers deduct a certain amount of wealth for sustaining livelihood (this restores their labour)
-;Tick
-
-;Inputs
-;The number of workers, owners and assets in the model
-;The percentage of workers vs. owners in the economy
-;Distribution of assets among the owners
-;The distribution of revenue that goes into capital, wages and owner’s wealth respectively
-;Total wealth in the system
-;Amount deducted from wealth to sustain livelihood
-
-;Outputs
-
-;Distribution of wealth : Plotting the wealth of all workers and owners to see the distribution of wealth. The Gini Index can also be used to evaluate equality in the system.
-;Revenue Generation : Plotting the revenue generated in each timestep to see the growth in the system - often characterised as the GDP of an economy.
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -296,7 +297,7 @@ BUTTON
 60
 Go
 go
-NIL
+T
 1
 T
 OBSERVER
@@ -304,7 +305,7 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 PLOT
 641
@@ -353,7 +354,7 @@ percent-capital
 percent-capital
 0
 100
-10.0
+30.0
 1
 1
 NIL
