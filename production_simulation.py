@@ -40,12 +40,17 @@ class NetLogoSim:
 
         combo_serial = self.params.index(combo)
         total_runs = self.runs
+        capital, wages, incomce = production_config.capital, production_config.wages, production_config.owner_income
 
         all_results = []
 
         try:
             for param, value in combo.items():
-                netlogo.command(f"set {param} {value}")  # Set model parameters
+                netlogo.command(f"set {param} {value}")  # Set model parameters from combo
+                netlogo.command(f"set percent-capital {capital}")
+                netlogo.command(f"set percent-wages {wages}")
+                netlogo.command(f"set percent-owner-income {incomce}")
+
             for i in range(total_runs):
                 netlogo.command("setup")  # Initialize simulation
 
@@ -54,7 +59,10 @@ class NetLogoSim:
                     "Run": i+1,
                     "Workers": combo.get("num-workers"),
                     "Owners": combo.get("num-owners"),
-                    "Assets": combo.get("num-assets")
+                    "Assets": combo.get("num-assets"),
+                    "Capital_perc": capital,
+                    "Wages_perc": wages,
+                    "Income_perc": incomce
                     }
 
                 current_tick = int(netlogo.report("ticks"))
@@ -90,8 +98,9 @@ class NetLogoSim:
     
     def drop_duplicates(self, dataset):
         dataset = pd.DataFrame(dataset)
-        dataset = dataset.drop_duplicates(subset=["Combo", "Workers", "Owners", "Assets"])
-        clean_data = dataset[["Combo", "Workers", "Owners", "Assets"]].copy()
+        unique_id = ["Combo", "Workers", "Owners", "Assets", "Capital_perc", "Wages_perc", "Income_perc"]
+        dataset = dataset.drop_duplicates(subset=unique_id)
+        clean_data = dataset[unique_id].copy()
         for i in range(self.target_ticks):
             clean_data[f"Avg-growth-rate_{i}"] = dataset[f"Avg-growth-rate_{i}"]
         return clean_data
