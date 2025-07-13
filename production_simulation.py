@@ -1,11 +1,10 @@
 import os  # Importing OS module for file operations
 import pandas as pd  # Import Pandas for data processing
-import numpy as np # Import Numpy
 import logging  # Logging setup for monitoring execution
 import time  # Time module for delays
 import jpype  # Interface for Java-Python interactions
 from datetime import datetime  # Date/time handling utilities
-from itertools import product  # Cartesian product for param combinations
+from itertools import product, chain  # Cartesian product for param combinations
 from joblib import Parallel, delayed  # Parallel execution for simulations
 from pynetlogo import NetLogoLink  # Interface for NetLogo simulations
 
@@ -42,6 +41,8 @@ class NetLogoSim:
         combo_serial = self.params.index(combo)
         total_runs = self.runs
 
+        all_results = []
+
         try:
             for param, value in combo.items():
                 netlogo.command(f"set {param} {value}")  # Set model parameters
@@ -63,6 +64,7 @@ class NetLogoSim:
                     results[f"Growth-rate_{current_tick}"] = netlogo.report("pt-growth-rate")
                     current_tick = int(netlogo.report("ticks"))
                 
+                all_results.append(results)
                 logging.info(f"Combination {combo_serial} iteration {i+1} complete.")
       
         except Exception as e:
@@ -73,7 +75,7 @@ class NetLogoSim:
             netlogo.kill_workspace()  # Close NetLogo workspace
             time.sleep(0.2)
 
-        return results
+        return all_results
 
     # Filter valid results and compute averages
     def filter_params(self, results):
@@ -106,9 +108,9 @@ def simulate():
         param_combinations = gen_param_combos(production_config.input_parameters)
         start_time_temp = datetime.now()
         simulation = NetLogoSim(param_combinations, runs=production_config.runs, ticks=production_config.max_ticks)  # Initialize simulation object
-        iter_data = Parallel(n_jobs=production_config.parallel_jobs, backend="multiprocessing")(
-            delayed(simulation.netlogo_model)(combo) for combo in simulation.params
-        )  # Run simulations in parallel
+        iter_data_nested = Parallel(n_jobs=production_config.parallel_jobs, backend="multiprocessing")(
+            delayed(simulation.netlogo_model)(combo) for combo in simulation.params) # Run simulations in parallel
+        iter_data = list(chain.from_iterable(filter(None, iter_data_nested)))
         end_time_temp = datetime.now()
         total_time = (end_time_temp - start_time_temp).total_seconds()
         logging.info(f"Time taken: {total_time}.")
