@@ -34,9 +34,9 @@ to setup
   reset-ticks
 
   ;; Set distribution percentages
-  set percent-capital 30
-  set percent-wages 50
-  set percent-owner-income 20
+  ;; set percent-capital 30
+  ;; set percent-wages 50
+  ;; set percent-owner-income 20
 
   ;; Set environment and shapes
   ask patches [ set pcolor white ]
@@ -222,8 +222,8 @@ GRAPHICS-WINDOW
 20
 -16
 16
-0
-0
+1
+1
 1
 ticks
 30.0
@@ -254,7 +254,7 @@ num-workers
 num-workers
 0
 100
-100.0
+80.0
 1
 1
 NIL
@@ -269,7 +269,7 @@ num-owners
 num-owners
 0
 100
-10.0
+30.0
 1
 1
 NIL
@@ -284,7 +284,7 @@ num-assets
 num-assets
 0
 100
-37.0
+65.0
 1
 1
 NIL
