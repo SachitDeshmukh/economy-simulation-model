@@ -2,3 +2,4 @@ __pycache__
 **/*.txt
 **/*.xlsx
 **/*.pdf
+production_config.py
