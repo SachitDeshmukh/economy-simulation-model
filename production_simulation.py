@@ -35,40 +35,43 @@ class NetLogoSim:
         self.target_ticks = int(ticks + 1) # to account for python's limitation with range()
 
     # Run simulation for a parameter combination
-    def netlogo_model(self, combo, run):
+    def netlogo_model(self, combo):
         netlogo = NetLogoLink(gui=False, netlogo_home=production_config.netlogo_exe)
         netlogo.load_model(production_config.model)
 
         combo_serial = self.params.index(combo)
+        total_runs = self.runs
+
         try:
             for param, value in combo.items():
                 netlogo.command(f"set {param} {value}")  # Set model parameters
+            for i in range(total_runs):
+                netlogo.command("setup")  # Initialize simulation
 
-            netlogo.command("setup")  # Initialize simulation
+                results = {
+                    "Combo": combo_serial,
+                    "Run": i+1,
+                    "Workers": combo.get("num-workers"),
+                    "Owners": combo.get("num-owners"),
+                    "Assets": combo.get("num-assets")
+                    }
 
-            results = {
-                "Combo": combo_serial,
-                "Run": run+1,
-                "Workers": combo.get("num-workers"),
-                "Owners": combo.get("num-owners"),
-                "Assets": combo.get("num-assets")
-                }
-
-            current_tick = int(netlogo.report("ticks"))
-
-            while current_tick < self.target_ticks:
-                netlogo.command("go")
-                results[f"Growth-rate_{current_tick}"] = netlogo.report("pt-growth-rate")
                 current_tick = int(netlogo.report("ticks"))
-            
-            logging.info(f"Combination {combo_serial} iteration {run+1} complete.")
-        
+
+                while current_tick < self.target_ticks:
+                    netlogo.command("go")
+                    results[f"Growth-rate_{current_tick}"] = netlogo.report("pt-growth-rate")
+                    current_tick = int(netlogo.report("ticks"))
+                
+                logging.info(f"Combination {combo_serial} iteration {i+1} complete.")
+      
         except Exception as e:
             logging.error(f"Simulation error with params {combo}: {e}")
             return None  # Ensure failed runs don’t corrupt output
         
         finally:
             netlogo.kill_workspace()  # Close NetLogo workspace
+            time.sleep(0.2)
 
         return results
 
@@ -104,10 +107,9 @@ def simulate():
         start_time_temp = datetime.now()
         simulation = NetLogoSim(param_combinations, runs=production_config.runs, ticks=production_config.max_ticks)  # Initialize simulation object
         iter_data = Parallel(n_jobs=production_config.parallel_jobs, backend="multiprocessing")(
-            delayed(simulation.netlogo_model)(combo, x) for combo in simulation.params for x in range(simulation.runs)
+            delayed(simulation.netlogo_model)(combo) for combo in simulation.params
         )  # Run simulations in parallel
         end_time_temp = datetime.now()
-        time.sleep(3)
         total_time = (end_time_temp - start_time_temp).total_seconds()
         logging.info(f"Time taken: {total_time}.")
 
