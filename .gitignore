@@ -1,5 +1,6 @@
 __pycache__
 **/*.txt
 **/*.xlsx
+**/*.csv
 **/*.pdf
 production_config.py
