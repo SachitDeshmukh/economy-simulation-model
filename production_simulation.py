@@ -98,14 +98,21 @@ class NetLogoSim:
         return growth_data, lorenz_data
 
     # Filter valid results and compute averages
-    def filter_params(self, results):
+    def filter_params(self, results, option):
         results = [res for res in results if res]
         result_data = pd.DataFrame(results)
-        for i in range(self.target_ticks):
-            avg_growth_rate = result_data.groupby("Combo")[f"Growth-rate_{i}"].mean().reset_index()
-            avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
-            result_data = result_data.merge(avg_growth_rate, on="Combo")
-        return result_data
+        if option == production_config.data_options[0]:
+            for i in range(self.target_ticks):
+                avg_growth_rate = result_data.groupby("Combo")[f"Growth-rate_{i}"].mean().reset_index()
+                avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
+                result_data = result_data.merge(avg_growth_rate, on="Combo")
+            return result_data    
+        elif option == production_config.data_options[1]:
+            return result_data # replace later with Lorenz data
+        elif option == production_config.data_options[2]:
+            return result_data # replace later with Gini data
+        else:
+            return pd.DataFrame()
 
     def drop_duplicates(self, dataset):
         dataset = pd.DataFrame(dataset)
@@ -143,16 +150,15 @@ def simulate():
 
     logging.info("ALL SIMULATIONS COMPLETE.")
 
-    growth_results = simulation.filter_params(growth_raw)
+    growth_results = simulation.filter_params(growth_raw, production_config.data_options[0])
     save_data(growth_results, backup_file_name=f"{production_config.backup_g_raw}", sheet_prefix="G_RAW")
 
     clean_growth = simulation.drop_duplicates(growth_results)
     save_data(clean_growth, backup_file_name=f"{production_config.backup_g_clean}", sheet_prefix="G_CLEAN")
 
-    # lorenz_results = simulation.filter_params(lorenz_raw)
-    lorenz_results = pd.DataFrame(lorenz_raw)
+    lorenz_results = simulation.filter_params(lorenz_raw, production_config.data_options[1])
     save_data(lorenz_results, backup_file_name=f"{production_config.backup_l_raw}", sheet_prefix="L_RAW")
 
-    data_sets = {"opt_1": clean_growth, "opt_2": lorenz_results, "opt_3": pd.DataFrame()}
+    data_sets = {production_config.data_options[0]: clean_growth, production_config.data_options[1]: lorenz_results, production_config.data_options[2]: pd.DataFrame()}
     return_data = data_sets[f"{production_config.current_opt}"]
     return return_data # THIS IS THE NETLOGO SIMULATION PYTHON FILE FOR THE PRODUCTION MODEL
