@@ -116,12 +116,16 @@ class NetLogoSim:
 
     # PREPARE ALL DATA FOR ANALYSIS
     def prep_data(self, results, option):
+        results_data = pd.DataFrame(results)
         if option == production_config.data_options[0]:
-            self.prep_growth(results)
+            prep_data = self.prep_growth(results_data)
+            return prep_data
         elif option == production_config.data_options[1]:
-            self.prep_lorenz(results)
+            prep_data = self.prep_lorenz(results_data)
+            return prep_data
         elif option == production_config.data_options[2]:
-            self.prep_gini(results)
+            prep_data = self.prep_gini(results_data)
+            return prep_data
         else:
             return pd.DataFrame()
 
