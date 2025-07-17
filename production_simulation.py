@@ -96,20 +96,32 @@ class NetLogoSim:
             time.sleep(0.2)
 
         return growth_data, lorenz_data
+    
+    # Prepare Growth data
+    def prep_growth(self, data):
+        data = pd.DataFrame(data)
+        for i in range(self.target_ticks):
+            avg_growth_rate = data.groupby("Combo")[f"Growth-rate_{i}"].mean().reset_index()
+            avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
+            data = data.merge(avg_growth_rate, on="Combo")
+        return data
+    
+    def prep_lorenz(self, data):
+        data = pd.DataFrame(data)
+        return data
 
-    # Filter valid results and compute averages
-    def filter_params(self, results, option):
-        result_data = pd.DataFrame(results)
+    def prep_gini(self, data):
+        data = pd.DataFrame(data)
+        return data
+
+    # PREPARE ALL DATA FOR ANALYSIS
+    def prep_data(self, results, option):
         if option == production_config.data_options[0]:
-            for i in range(self.target_ticks):
-                avg_growth_rate = result_data.groupby("Combo")[f"Growth-rate_{i}"].mean().reset_index()
-                avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
-                result_data = result_data.merge(avg_growth_rate, on="Combo")
-            return result_data    
+            self.prep_growth(results)
         elif option == production_config.data_options[1]:
-            return result_data # replace later with Lorenz data
+            self.prep_lorenz(results)
         elif option == production_config.data_options[2]:
-            return result_data # replace later with Gini data
+            self.prep_gini(results)
         else:
             return pd.DataFrame()
 
@@ -149,13 +161,13 @@ def simulate():
 
     logging.info("ALL SIMULATIONS COMPLETE.")
 
-    growth_results = simulation.filter_params(growth_raw, production_config.data_options[0])
+    growth_results = simulation.prep_data(growth_raw, production_config.data_options[0])
     save_data(growth_results, backup_file_name=f"{production_config.backup_g_raw}", sheet_prefix="G_RAW")
 
     clean_growth = simulation.drop_duplicates(growth_results)
     save_data(clean_growth, backup_file_name=f"{production_config.backup_g_clean}", sheet_prefix="G_CLEAN")
 
-    lorenz_results = simulation.filter_params(lorenz_raw, production_config.data_options[1])
+    lorenz_results = simulation.prep_data(lorenz_raw, production_config.data_options[1])
     save_data(lorenz_results, backup_file_name=f"{production_config.backup_l_raw}", sheet_prefix="L_RAW")
 
     data_sets = {production_config.data_options[0]: clean_growth, production_config.data_options[1]: lorenz_results, production_config.data_options[2]: pd.DataFrame()}
