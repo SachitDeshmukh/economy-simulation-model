@@ -99,7 +99,6 @@ class NetLogoSim:
 
     # Filter valid results and compute averages
     def filter_params(self, results, option):
-        results = [res for res in results if res]
         result_data = pd.DataFrame(results)
         if option == production_config.data_options[0]:
             for i in range(self.target_ticks):
