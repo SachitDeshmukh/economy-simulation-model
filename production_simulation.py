@@ -165,14 +165,12 @@ def simulate():
 
     logging.info("ALL SIMULATIONS COMPLETE.")
 
-    growth_results = simulation.prep_data(growth_raw, production_config.data_options[0])
+    growth_results, lorenz_results = simulation.prep_data(growth_raw, production_config.data_options[0]), simulation.prep_data(lorenz_raw, production_config.data_options[1])
     save_data(growth_results, backup_file_name=f"{production_config.backup_g_raw}", sheet_prefix="G_RAW")
+    save_data(lorenz_results, backup_file_name=f"{production_config.backup_l_raw}", sheet_prefix="L_RAW")
 
     clean_growth = simulation.drop_duplicates(growth_results)
     save_data(clean_growth, backup_file_name=f"{production_config.backup_g_clean}", sheet_prefix="G_CLEAN")
-
-    lorenz_results = simulation.prep_data(lorenz_raw, production_config.data_options[1])
-    save_data(lorenz_results, backup_file_name=f"{production_config.backup_l_raw}", sheet_prefix="L_RAW")
 
     data_sets = {production_config.data_options[0]: clean_growth, production_config.data_options[1]: lorenz_results, production_config.data_options[2]: pd.DataFrame()}
     return_data = data_sets[f"{production_config.current_opt}"]
