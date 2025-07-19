@@ -131,9 +131,9 @@ def simulate():
     logging.info("ALL SIMULATIONS COMPLETE.")
 
     production_results = simulation.filter_params(iter_data)
-    save_data(production_results, backup_file_name=f"{production_config.backup_raw}", sheet_prefix="RAW")
+    save_data(production_results, backup_file_name=f"{production_config.backup_g_raw}", sheet_prefix="RAW")
 
     clean_results = simulation.drop_duplicates(production_results)
-    save_data(clean_results, backup_file_name=f"{production_config.backup_clean}", sheet_prefix="CLEAN")
+    save_data(clean_results, backup_file_name=f"{production_config.backup_g_clean}", sheet_prefix="CLEAN")
 
     return clean_results # THIS IS THE NETLOGO SIMULATION PYTHON FILE FOR THE PRODUCTION MODEL

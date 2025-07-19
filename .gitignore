@@ -3,4 +3,5 @@ __pycache__
 **/*.xlsx
 **/*.csv
 **/*.pdf
+**/*.png
 production_config.py
