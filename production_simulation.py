@@ -42,7 +42,7 @@ class NetLogoSim:
         total_runs = self.runs
         capital, wages, incomce = production_config.capital, production_config.wages, production_config.owner_income
 
-        all_results = []
+        growth_data, lorenz_data = [], []
 
         try:
             for param, value in combo.items():
@@ -54,7 +54,7 @@ class NetLogoSim:
             for i in range(total_runs):
                 netlogo.command("setup")  # Initialize simulation
 
-                results = {
+                common_id = {
                     "Combo": combo_serial,
                     "Run": i+1,
                     "Workers": combo.get("num-workers"),
@@ -64,38 +64,71 @@ class NetLogoSim:
                     "Wages_perc": wages,
                     "Income_perc": incomce
                     }
+                growth_addon, lorenz_addon = {}, {}
 
                 current_tick = int(netlogo.report("ticks"))
 
                 while current_tick < self.target_ticks:
                     netlogo.command("go")
-                    results[f"Growth-rate_{current_tick}"] = netlogo.report("pt-growth-rate")
+                    growth_addon[f"Growth-rate_{current_tick}"] = netlogo.report("pt-growth-rate")
                     current_tick = int(netlogo.report("ticks"))
-                
-                all_results.append(results)
+                worker_wealths = netlogo.report("[wealth] of workers")
+                owner_wealths = netlogo.report("[wealth] of owners")
+                agents = {"worker": worker_wealths, "owner": owner_wealths} 
+                for agent, data in agents.items():
+                    for j in range(len(data)):
+                        lorenz_addon[f"{agent}_{j}_wealth"] = data[j]
+
+                growth_combined = {**common_id, **growth_addon}
+                lorenz_combined = {**common_id, **lorenz_addon}
+
+                growth_data.append(growth_combined)
+                lorenz_data.append(lorenz_combined)
+
                 logging.info(f"Combination {combo_serial} iteration {i+1} complete.")
-      
+
         except Exception as e:
             logging.error(f"Simulation error with params {combo}: {e}")
-            return None  # Ensure failed runs don’t corrupt output
-        
+            return [], []  # Ensure failed runs don’t corrupt output
+
         finally:
             netlogo.kill_workspace()  # Close NetLogo workspace
             time.sleep(0.2)
 
-        return all_results
-
-    # Filter valid results and compute averages
-    def filter_params(self, results):
-        results = [res for res in results if res is not None]
-        result_data = pd.DataFrame(results)
-        # result_data.to_csv(f"test_output_16-38.csv")
-        for i in range(self.target_ticks):
-            avg_growth_rate = result_data.groupby("Combo")[f"Growth-rate_{i}"].mean().reset_index()
-            avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
-            result_data = result_data.merge(avg_growth_rate, on="Combo")         
-        return result_data
+        return growth_data, lorenz_data
     
+    # Prepare Growth data
+    def prep_growth(self, data):
+        data = pd.DataFrame(data)
+        for i in range(self.target_ticks):
+            avg_growth_rate = data.groupby("Combo")[f"Growth-rate_{i}"].mean().reset_index()
+            avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
+            data = data.merge(avg_growth_rate, on="Combo")
+        return data
+    
+    def prep_lorenz(self, data):
+        data = pd.DataFrame(data)
+        return data
+
+    def prep_gini(self, data):
+        data = pd.DataFrame(data)
+        return data
+
+    # PREPARE ALL DATA FOR ANALYSIS
+    def prep_data(self, results, option):
+        results_data = pd.DataFrame(results)
+        if option == production_config.data_options[0]:
+            prep_data = self.prep_growth(results_data)
+            return prep_data
+        elif option == production_config.data_options[1]:
+            prep_data = self.prep_lorenz(results_data)
+            return prep_data
+        elif option == production_config.data_options[2]:
+            prep_data = self.prep_gini(results_data)
+            return prep_data
+        else:
+            return pd.DataFrame()
+
     def drop_duplicates(self, dataset):
         dataset = pd.DataFrame(dataset)
         unique_id = ["Combo", "Workers", "Owners", "Assets", "Capital_perc", "Wages_perc", "Income_perc"]
@@ -117,9 +150,11 @@ def simulate():
         param_combinations = gen_param_combos(production_config.input_parameters)
         start_time_temp = datetime.now()
         simulation = NetLogoSim(param_combinations, runs=production_config.runs, ticks=production_config.max_ticks)  # Initialize simulation object
-        iter_data_nested = Parallel(n_jobs=production_config.parallel_jobs, backend="multiprocessing")(
-            delayed(simulation.netlogo_model)(combo) for combo in simulation.params) # Run simulations in parallel
-        iter_data = list(chain.from_iterable(filter(None, iter_data_nested)))
+        results = Parallel(n_jobs=production_config.parallel_jobs, backend="multiprocessing")(
+            delayed(simulation.netlogo_model)(combo) for combo in simulation.params)
+        results = [res for res in results if res[0] or res[1]]
+        growth_raw = [entry for res in results for entry in res[0] if entry]
+        lorenz_raw = [entry for res in results for entry in res[1] if entry]
         end_time_temp = datetime.now()
         total_time = (end_time_temp - start_time_temp).total_seconds()
         logging.info(f"Time taken: {total_time}.")
@@ -130,10 +165,13 @@ def simulate():
 
     logging.info("ALL SIMULATIONS COMPLETE.")
 
-    production_results = simulation.filter_params(iter_data)
-    save_data(production_results, backup_file_name=f"{production_config.backup_g_raw}", sheet_prefix="RAW")
+    growth_results, lorenz_results = simulation.prep_data(growth_raw, production_config.data_options[0]), simulation.prep_data(lorenz_raw, production_config.data_options[1])
+    save_data(growth_results, backup_file_name=f"{production_config.backup_g_raw}", sheet_prefix="G_RAW")
+    save_data(lorenz_results, backup_file_name=f"{production_config.backup_l_raw}", sheet_prefix="L_RAW")
 
-    clean_results = simulation.drop_duplicates(production_results)
-    save_data(clean_results, backup_file_name=f"{production_config.backup_g_clean}", sheet_prefix="CLEAN")
+    clean_growth = simulation.drop_duplicates(growth_results)
+    save_data(clean_growth, backup_file_name=f"{production_config.backup_g_clean}", sheet_prefix="G_CLEAN")
 
-    return clean_results # THIS IS THE NETLOGO SIMULATION PYTHON FILE FOR THE PRODUCTION MODEL
+    data_sets = {production_config.data_options[0]: clean_growth, production_config.data_options[1]: lorenz_results, production_config.data_options[2]: pd.DataFrame()}
+    return_data = data_sets[f"{production_config.current_opt}"]
+    return return_data # THIS IS THE NETLOGO SIMULATION PYTHON FILE FOR THE PRODUCTION MODEL
