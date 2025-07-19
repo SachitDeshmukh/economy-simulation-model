@@ -69,4 +69,4 @@ class GrowthData:
         png_file = f"{production_config.file_name}_{list(production_config.data_particulars[production_config.current_opt].keys())[0]}_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.png"
         plt.savefig(png_file, dpi=300, bbox_inches='tight')
 
-        logging.info(f"Graph generated. File saved to {png_file}")
+        logging.info(f"GRAPH GENERATED. FILE SAVED TO {png_file}")

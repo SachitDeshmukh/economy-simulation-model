@@ -7,6 +7,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # Importing the modules
 import production_simulation
 import production_graph
+import production_config
 
 def ask_yes_no_keypress(prompt):
     print(prompt, end='', flush=True)
@@ -26,9 +27,18 @@ def main():
     while GEN_GRAPH:
         if not SIM_DONE:
             results = production_simulation.simulate() # simulate the NETLOGO model if not simulated before
+            SIM_DONE = True
         else:
             results = production_graph.load_data() # load pre-existing data from Excel sheet
-        production_graph.gen_graphs(results)
+        if production_config.current_opt == "opt_1":
+            Graph = production_graph.GrowthData(results)
+            Graph.gen_growth_graph()
+        elif production_config.current_opt == "opt_2":
+            pass
+        elif production_config.current_opt == "opt_3":
+            pass
+        else:
+            pass
         GEN_GRAPH = False
     else:
         if not SIM_DONE:
@@ -36,4 +46,4 @@ def main():
         logging.info("The graphs were not generated.")
 
 if __name__ == "__main__":
-    main()# THIS IS THE MAIN PYTHON FILE FOR THE PRODUCTION MODEL
+    main() # THIS IS THE MAIN PYTHON FILE FOR THE PRODUCTION MODEL
