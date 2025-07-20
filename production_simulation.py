@@ -96,7 +96,7 @@ class NetLogoSim:
             time.sleep(0.2)
 
         return growth_data, lorenz_data
-    
+
     # Prepare Growth data
     def prep_growth(self, data):
         data = pd.DataFrame(data)
@@ -105,10 +105,20 @@ class NetLogoSim:
             avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
             data = data.merge(avg_growth_rate, on="Combo")
         return data
-    
-    def prep_lorenz(self, data):
+
+    def prep_lorenz(self, data, num_bins):
         data = pd.DataFrame(data)
-        return data
+        id_vars = production_config.lorenz_id_prep
+        melt_cols = [col for col in data.columns if col.endswith(production_config.lorenz_column_suffix_prep)]
+        var_name = production_config.lorenz_var_prep
+        value_name = production_config.lorenz_value_prep
+        
+        reshape_data = pd.melt(data, id_vars=id_vars, value_vars=melt_cols, var_name=var_name, value_name=value_name, ignore_index=False)
+        reshape_data[var_name] = reshape_data[var_name].str.replace(production_config.lorenz_column_suffix_prep, "", regex=False)
+
+        # then run the bin code
+        # all_results = []
+        return reshape_data
 
     def prep_gini(self, data):
         data = pd.DataFrame(data)
@@ -121,7 +131,7 @@ class NetLogoSim:
             prep_data = self.prep_growth(results_data)
             return prep_data
         elif option == production_config.data_options[1]:
-            prep_data = self.prep_lorenz(results_data)
+            prep_data = self.prep_lorenz(results_data, production_config.lorenz_bins)
             return prep_data
         elif option == production_config.data_options[2]:
             prep_data = self.prep_gini(results_data)
