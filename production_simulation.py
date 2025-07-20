@@ -1,5 +1,6 @@
 import os  # Importing OS module for file operations
 import pandas as pd  # Import Pandas for data processing
+import numpy as np # Import Numoy for matrix operations
 import logging  # Logging setup for monitoring execution
 import time  # Time module for delays
 import jpype  # Interface for Java-Python interactions
@@ -96,7 +97,7 @@ class NetLogoSim:
             time.sleep(0.2)
 
         return growth_data, lorenz_data
-    
+
     # Prepare Growth data
     def prep_growth(self, data):
         data = pd.DataFrame(data)
@@ -105,9 +106,36 @@ class NetLogoSim:
             avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
             data = data.merge(avg_growth_rate, on="Combo")
         return data
-    
-    def prep_lorenz(self, data):
+
+    def prep_lorenz(self, data, num_bins):
         data = pd.DataFrame(data)
+        all_results = []
+
+        for combo, wealth_data in data.groupby("Combo"):
+            curr_data = wealth_data.drop(columns=production_config.lorenz_id_prep).values.flatten()
+            min_val = np.nanmin(curr_data)
+            max_val = np.nanmax(curr_data)
+            bins = np.linspace(min_val, max_val, num_bins + 1)
+            midpoints = 0.5 * (bins[:-1] + bins[1:])
+
+            def bin_row(row):
+                values = row.drop(columns=production_config.lorenz_id_prep).values
+                values = values[~np.isnan(values)]
+                bin_indices = np.digitize(values, bins, right=False) - 1
+                bin_indices = np.clip(bin_indices, 0, num_bins - 1)
+                bin_counts = np.bincount(bin_indices, minlength=num_bins)
+                midpoints_row = midpoints.copy()
+                bin_series = pd.Series(bin_counts, index=[f'Bin_{i}' for i in range(num_bins)])
+                mid_series = pd.Series(midpoints_row, index=[f'Mid_{i}' for i in range(num_bins)])
+                return pd.concat([bin_series, mid_series])
+            
+            binned = wealth_data.apply(bin_row, axis=1)
+            binned["Combo"] = combo
+            all_results.append(binned)
+
+        frequency_data = pd.concat(all_results, ignore_index=True)
+        avg_frequency_data = frequency_data.groupby("Combo").mean()
+        data = data.merge(avg_frequency_data, on="Combo")
         return data
 
     def prep_gini(self, data):
@@ -121,7 +149,7 @@ class NetLogoSim:
             prep_data = self.prep_growth(results_data)
             return prep_data
         elif option == production_config.data_options[1]:
-            prep_data = self.prep_lorenz(results_data)
+            prep_data = self.prep_lorenz(results_data, production_config.lorenz_bins)
             return prep_data
         elif option == production_config.data_options[2]:
             prep_data = self.prep_gini(results_data)
