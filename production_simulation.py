@@ -98,7 +98,7 @@ class NetLogoSim:
 
         return growth_data, lorenz_data
 
-    # Prepare Growth data
+    # GROWTH DATA
     def prep_growth(self, data):
         data = pd.DataFrame(data)
         for i in range(self.target_ticks):
@@ -107,6 +107,16 @@ class NetLogoSim:
             data = data.merge(avg_growth_rate, on="Combo")
         return data
 
+    def clean_growth(self, data):
+        data = pd.DataFrame(data)
+        unique_id = ["Combo", "Workers", "Owners", "Assets", "Capital_perc", "Wages_perc", "Income_perc"]
+        dataset = data.drop_duplicates(subset=unique_id)
+        clean_data = dataset[unique_id].copy()
+        for i in range(self.target_ticks):
+            clean_data[f"Avg-growth-rate_{i}"] = dataset[f"Avg-growth-rate_{i}"]
+        return clean_data
+
+    # LORENZ DATA
     def prep_lorenz(self, data, num_bins):
         data = pd.DataFrame(data)
         all_results = []
@@ -125,8 +135,8 @@ class NetLogoSim:
                 bin_indices = np.clip(bin_indices, 0, num_bins - 1)
                 bin_counts = np.bincount(bin_indices, minlength=num_bins)
                 midpoints_row = midpoints.copy()
-                bin_series = pd.Series(bin_counts, index=[f'Bin_{i}' for i in range(num_bins)])
-                mid_series = pd.Series(midpoints_row, index=[f'Mid_{i}' for i in range(num_bins)])
+                bin_series = pd.Series(bin_counts, index=[f"Bin_{i+1}" for i in range(num_bins)])
+                mid_series = pd.Series(midpoints_row, index=[f"Mid_{i+1}" for i in range(num_bins)])
                 return pd.concat([bin_series, mid_series])
             
             binned = wealth_data.apply(bin_row, axis=1)
@@ -137,8 +147,22 @@ class NetLogoSim:
         avg_frequency_data = frequency_data.groupby("Combo").mean()
         data = data.merge(avg_frequency_data, on="Combo")
         return data
+    
+    def clean_lorenz(self, data):
+        data = pd.DataFrame(data)
+        unique_id = ["Combo", "Workers", "Owners", "Assets", "Capital_perc", "Wages_perc", "Income_perc"]
+        dataset = data.drop_duplicates(subset=unique_id)
+        clean_data = dataset[unique_id].copy()
+        for prefix in ["Bin", "Mid"]:
+            for i in range(production_config.lorenz_bins):
+                clean_data[f"{prefix}_{i+1}"] = dataset[f"{prefix}_{i+1}"]
+        return clean_data
 
     def prep_gini(self, data):
+        data = pd.DataFrame(data)
+        return data
+    
+    def clean_gini(self, data):
         data = pd.DataFrame(data)
         return data
 
@@ -157,14 +181,19 @@ class NetLogoSim:
         else:
             return pd.DataFrame()
 
-    def drop_duplicates(self, dataset):
+    def drop_duplicates(self, dataset, option):
         dataset = pd.DataFrame(dataset)
-        unique_id = ["Combo", "Workers", "Owners", "Assets", "Capital_perc", "Wages_perc", "Income_perc"]
-        dataset = dataset.drop_duplicates(subset=unique_id)
-        clean_data = dataset[unique_id].copy()
-        for i in range(self.target_ticks):
-            clean_data[f"Avg-growth-rate_{i}"] = dataset[f"Avg-growth-rate_{i}"]
-        return clean_data
+        if option == production_config.data_options[0]:
+            clean_data = self.clean_growth(dataset)
+            return clean_data
+        elif option == production_config.data_options[1]:
+            clean_data = self.clean_lorenz(dataset)
+            return clean_data
+        elif option == production_config.data_options[2]:
+            clean_data = self.clean_gini(dataset)
+            return clean_data
+        else:
+            return pd.DataFrame()
 
 # Main execution function
 def simulate():
@@ -197,9 +226,10 @@ def simulate():
     save_data(growth_results, backup_file_name=f"{production_config.backup_g_raw}", sheet_prefix="G_RAW")
     save_data(lorenz_results, backup_file_name=f"{production_config.backup_l_raw}", sheet_prefix="L_RAW")
 
-    clean_growth = simulation.drop_duplicates(growth_results)
+    clean_growth, clean_lorenz = simulation.drop_duplicates(growth_results, production_config.data_options[0]), simulation.drop_duplicates(lorenz_results, production_config.data_options[1])
     save_data(clean_growth, backup_file_name=f"{production_config.backup_g_clean}", sheet_prefix="G_CLEAN")
+    save_data(clean_lorenz, backup_file_name=f"{production_config.backup_l_clean}", sheet_prefix="L_CLEAN")
 
-    data_sets = {production_config.data_options[0]: clean_growth, production_config.data_options[1]: lorenz_results, production_config.data_options[2]: pd.DataFrame()}
+    data_sets = {production_config.data_options[0]: clean_growth, production_config.data_options[1]: clean_lorenz, production_config.data_options[2]: pd.DataFrame()}
     return_data = data_sets[f"{production_config.current_opt}"]
     return return_data # THIS IS THE NETLOGO SIMULATION PYTHON FILE FOR THE PRODUCTION MODEL
