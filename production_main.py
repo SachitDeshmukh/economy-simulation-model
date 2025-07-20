@@ -43,7 +43,7 @@ def main():
     else:
         if not SIM_DONE:
             production_simulation.simulate()
-        logging.info("The graphs were not generated.")
+            logging.info("The graphs were not generated.")
 
 if __name__ == "__main__":
     main() # THIS IS THE MAIN PYTHON FILE FOR THE PRODUCTION MODEL
