@@ -11,8 +11,21 @@ from pynetlogo import NetLogoLink  # Interface for NetLogo simulations
 import production_config # To import all GLOBALS
 
 # Generate all possible parameter combinations
-def gen_param_combos(all_params):
-    return [dict(zip(all_params.keys(), values)) for values in product(*all_params.values())]
+def gen_param_combos(agent_params, perc_params):
+    first_keys = tuple(agent_params.keys())
+    add_keys = production_config.percent_keys
+    new_keys = first_keys + add_keys
+    first_values = [values for values in product(*agent_params.values())]
+    add_values = perc_params
+
+    new_values = []
+    for og_param in first_values:
+        for add_param in add_values:
+            new_param = og_param + add_param
+            new_values.append(new_param)
+
+    all_combos = [dict(zip(new_keys, values)) for values in new_values]
+    return all_combos
 
 # Save simulation data in CSV and Excel formats
 def save_data(data, backup_file_name, sheet_prefix):
@@ -40,16 +53,12 @@ class NetLogoSim:
 
         combo_serial = self.params.index(combo)
         total_runs = self.runs
-        capital, wages, incomce = production_config.capital, production_config.wages, production_config.owner_income
 
         growth_data, lorenz_data = [], []
 
         try:
             for param, value in combo.items():
                 netlogo.command(f"set {param} {value}")  # Set model parameters from combo
-                netlogo.command(f"set percent-capital {capital}")
-                netlogo.command(f"set percent-wages {wages}")
-                netlogo.command(f"set percent-owner-income {incomce}")
 
             for i in range(total_runs):
                 netlogo.command("setup")  # Initialize simulation
@@ -60,9 +69,9 @@ class NetLogoSim:
                     "Workers": combo.get("num-workers"),
                     "Owners": combo.get("num-owners"),
                     "Assets": combo.get("num-assets"),
-                    "Capital_perc": capital,
-                    "Wages_perc": wages,
-                    "Income_perc": incomce
+                    "Capital_perc": combo.get("percent-capital"),
+                    "Wages_perc": combo.get("percent-wages"),
+                    "Income_perc": combo.get("percent-owner-income")
                     }
                 growth_addon, lorenz_addon = {}, {}
 
@@ -147,7 +156,7 @@ def simulate():
 
     try:
         logging.info(f"Starting iteration...")
-        param_combinations = gen_param_combos(production_config.input_parameters)
+        param_combinations = gen_param_combos(production_config.input_parameters, production_config.percent_parameters)
         start_time_temp = datetime.now()
         simulation = NetLogoSim(param_combinations, runs=production_config.runs, ticks=production_config.max_ticks)  # Initialize simulation object
         results = Parallel(n_jobs=production_config.parallel_jobs, backend="multiprocessing")(
