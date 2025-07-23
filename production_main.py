@@ -35,7 +35,7 @@ def main():
             Graph.gen_growth_graph()
         elif production_config.current_opt == "opt_2":
             Lorenz = production_graph.LorenzData(results)
-            return None
+            Lorenz.gen_lorenz_graph()
         elif production_config.current_opt == "opt_3":
             pass
         else:
