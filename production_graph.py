@@ -134,12 +134,16 @@ class LorenzData:
         raw_x_values, raw_y_values = self.split_lorenz_data()
         all_raw_data = self.prep_lorenz_graph(raw_x_values, raw_y_values)
 
-# TODO: PLOT TRUE EQUALITY IN RED COLOR ON THE GRAPH
+        true_x = production_config.true_equality_x
+        true_y = production_config.true_equality_y
 
         plt.figure(figsize=(12, 6))
         for combination in all_raw_data:
             for label, plot_data in combination.items():
                 plt.plot(plot_data[0], plot_data[-1], label=label)
+        plt.plot(true_x, true_y, label="True Equality", color="red", linestyle="dashed")
+        plt.ylim(bottom=0)
+        plt.xlim(left=0)
         plt.xlabel(production_config.lorenz_X_label)
         plt.ylabel(production_config.lorenz_Y_label)
         plt.legend()
