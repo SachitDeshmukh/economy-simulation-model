@@ -113,8 +113,8 @@ class LorenzData:
         x_values, y_values = [], []
 
         for combo in all_combos:
-            x = raw_x.loc[raw_x["Combo"] == combo, self.bins].values.flatten().tolist()
-            y = raw_y.loc[raw_y["Combo"] == combo, self.mid].values.flatten().tolist()
+            x = [0] + raw_x.loc[raw_x["Combo"] == combo, self.bins].values.flatten().tolist()
+            y = [0] + raw_y.loc[raw_y["Combo"] == combo, self.mid].values.flatten().tolist()
             x_values.append(x)
             y_values.append(y)
 
@@ -127,8 +127,6 @@ class LorenzData:
             i += 1
 
         return graph_data
-
-#TODO: UPDATE GRAPH TO ALLOW ALL DATA POINTS TO START FROM ZERO
 
     def gen_lorenz_graph(self):
         raw_x_values, raw_y_values = self.split_lorenz_data()
