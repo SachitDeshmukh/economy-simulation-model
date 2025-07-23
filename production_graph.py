@@ -104,8 +104,6 @@ class LorenzData:
 
         return mid_data, bin_data
 
-#TODO: OBTAIN X,Y DATA FOR MULTIPLE COMBINATIONS TO PLOT THE LORENZ CURVE
-
     def prep_lorenz_graph(self, x_data, y_data):
         raw_x = pd.DataFrame(x_data)
         raw_y = pd.DataFrame(y_data)
