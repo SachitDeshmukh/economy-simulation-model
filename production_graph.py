@@ -43,7 +43,7 @@ class GrowthData:
         reshape_data[var_name] = reshape_data[var_name].str.replace(production_config.growth_column_prefix, "", regex=False)
         return reshape_data
 
-    def prep_graph_data(self, data):
+    def prep_growth_graph(self, data):
         raw_data = pd.DataFrame(data)
         y_values = {}
 
@@ -55,7 +55,7 @@ class GrowthData:
 
     def gen_growth_graph(self):
         clean_data = self.reshape_growth_data()
-        y_data = self.prep_graph_data(clean_data)
+        y_data = self.prep_growth_graph(clean_data)
         x_data = production_config.growth_X_data
 
         plt.figure(figsize=(12, 6))
@@ -65,6 +65,87 @@ class GrowthData:
         plt.ylabel(production_config.growth_Y_label)
         plt.legend()
         plt.title(production_config.growth_graph_title)
+
+        png_file = f"{production_config.file_name}_{list(production_config.data_particulars[production_config.current_opt].keys())[0]}_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.png"
+        plt.savefig(png_file, dpi=300, bbox_inches='tight')
+
+        logging.info(f"GRAPH GENERATED. FILE SAVED TO {png_file}")
+
+class LorenzData:
+    def __init__(self, data):
+        self.dataset = pd.DataFrame(data)
+        self.bins = [col for col in self.dataset.columns if col.startswith("Bin")]
+        self.mid = [col for col in self.dataset.columns if col.startswith("Mid")]
+    
+    def split_lorenz_data(self):
+        raw_data = self.dataset
+        id_vars = production_config.lorenz_id_vars
+
+#TODO: OPTIMIZE THE DATA CLEANING FOR LORENZ WITH A DEF FUNCTION
+
+        id_data = raw_data[id_vars].copy()
+        bin_cols = self.bins
+        mid_cols = self.mid
+
+        bin_prep = raw_data[bin_cols].cumsum(axis=1)
+        mid_prep = raw_data[mid_cols].cumsum(axis=1)
+
+        bin_sum = raw_data[bin_cols].sum(axis=1)
+        mid_sum = raw_data[mid_cols].sum(axis=1)
+
+        bin_prep = bin_prep.div(bin_sum, axis=0) * 100
+        mid_prep = mid_prep.div(mid_sum, axis=0) * 100
+
+        bin_data = id_data.copy()
+        mid_data = id_data.copy()
+
+        bin_data[bin_cols] = bin_prep
+        mid_data[mid_cols] = mid_prep
+
+        return bin_data, mid_data
+
+    def prep_lorenz_graph(self, x_data, y_data):
+        raw_x = pd.DataFrame(x_data)
+        raw_y = pd.DataFrame(y_data)
+        all_combos = production_config.lorenz_current_combos
+
+        graph_data = []
+        x_values, y_values = [], []
+
+        for combo in all_combos:
+            x = [0] + raw_x.loc[raw_x["Combo"] == combo, self.bins].values.flatten().tolist()
+            y = [0] + raw_y.loc[raw_y["Combo"] == combo, self.mid].values.flatten().tolist()
+            x_values.append(x)
+            y_values.append(y)
+
+        all_pairs = list(zip(x_values, y_values))
+
+        i = 0
+        for x, y in all_pairs:
+            pair = {f"Combination {all_combos[i]}": [x, y]}
+            graph_data.append(pair)
+            i += 1
+
+        return graph_data
+
+    def gen_lorenz_graph(self):
+        raw_x_values, raw_y_values = self.split_lorenz_data()
+        all_raw_data = self.prep_lorenz_graph(raw_x_values, raw_y_values)
+
+        true_x = production_config.true_equality_x
+        true_y = production_config.true_equality_y
+
+        plt.figure(figsize=(12, 6))
+        for combination in all_raw_data:
+            for label, plot_data in combination.items():
+                plt.plot(plot_data[0], plot_data[-1], label=label)
+        plt.plot(true_x, true_y, label="True Equality", color="red", linestyle="dashed")
+        plt.ylim(bottom=0)
+        plt.xlim(left=0)
+        plt.xlabel(production_config.lorenz_X_label)
+        plt.ylabel(production_config.lorenz_Y_label)
+        plt.legend()
+        plt.title(production_config.lorenz_graph_title)
 
         png_file = f"{production_config.file_name}_{list(production_config.data_particulars[production_config.current_opt].keys())[0]}_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.png"
         plt.savefig(png_file, dpi=300, bbox_inches='tight')
