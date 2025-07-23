@@ -74,6 +74,8 @@ class GrowthData:
 class LorenzData:
     def __init__(self, data):
         self.dataset = pd.DataFrame(data)
+        self.bins = [col for col in self.dataset.columns if col.startswith("Bin")]
+        self.mid = [col for col in self.dataset.columns if col.startswith("Mid")]
     
     def split_lorenz_data(self):
         raw_data = self.dataset
@@ -82,8 +84,8 @@ class LorenzData:
 #TODO: OPTIMIZE THE DATA CLEANING FOR LORENZ WITH A DEF FUNCTION
 
         id_data = raw_data[id_vars].copy()
-        bin_cols = [col for col in raw_data.columns if col.startswith("Bin")]
-        mid_cols = [col for col in raw_data.columns if col.startswith("Mid")]
+        bin_cols = self.bins
+        mid_cols = self.mid
 
         bin_prep = raw_data[bin_cols].cumsum(axis=1)
         mid_prep = raw_data[mid_cols].cumsum(axis=1)
@@ -100,7 +102,32 @@ class LorenzData:
         bin_data[bin_cols] = bin_prep
         mid_data[mid_cols] = mid_prep
 
-        return bin_data, mid_data
+        return mid_data, bin_data
 
 #TODO: OBTAIN X,Y DATA FOR MULTIPLE COMBINATIONS TO PLOT THE LORENZ CURVE
+
+    def prep_lorenz_graph(self, x_data, y_data):
+        raw_x = pd.DataFrame(x_data)
+        raw_y = pd.DataFrame(y_data)
+        all_combos = production_config.lorenz_current_combos
+
+        graph_data = []
+        x_values, y_values = [], []
+
+        for combo in all_combos:
+            x = raw_x.loc[raw_x["Combo"] == combo, self.mid].values.flatten().tolist()
+            y = raw_y.loc[raw_y["Combo"] == combo, self.bins].values.flatten().tolist()
+            x_values.append(x)
+            y_values.append(y)
+
+        all_pairs = list(zip(x_values, y_values))
+
+        i = 0
+        for x, y in all_pairs:
+            pair = {f"Combination {all_combos[i]}": [x, y]}
+            graph_data.append(pair)
+            i += 1
+
+        return graph_data
+
 #TODO: ADD CODE TO GRAPH THE LORENZ CURVES
