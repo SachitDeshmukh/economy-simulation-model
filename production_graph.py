@@ -43,7 +43,7 @@ class GrowthData:
         reshape_data[var_name] = reshape_data[var_name].str.replace(production_config.growth_column_prefix, "", regex=False)
         return reshape_data
 
-    def prep_graph_data(self, data):
+    def prep_growth_graph(self, data):
         raw_data = pd.DataFrame(data)
         y_values = {}
 
@@ -55,7 +55,7 @@ class GrowthData:
 
     def gen_growth_graph(self):
         clean_data = self.reshape_growth_data()
-        y_data = self.prep_graph_data(clean_data)
+        y_data = self.prep_growth_graph(clean_data)
         x_data = production_config.growth_X_data
 
         plt.figure(figsize=(12, 6))
@@ -70,3 +70,37 @@ class GrowthData:
         plt.savefig(png_file, dpi=300, bbox_inches='tight')
 
         logging.info(f"GRAPH GENERATED. FILE SAVED TO {png_file}")
+
+class LorenzData:
+    def __init__(self, data):
+        self.dataset = pd.DataFrame(data)
+    
+    def split_lorenz_data(self):
+        raw_data = self.dataset
+        id_vars = production_config.lorenz_id_vars
+
+#TODO: OPTIMIZE THE DATA CLEANING FOR LORENZ WITH A DEF FUNCTION
+
+        id_data = raw_data[id_vars].copy()
+        bin_cols = [col for col in raw_data.columns if col.startswith("Bin")]
+        mid_cols = [col for col in raw_data.columns if col.startswith("Mid")]
+
+        bin_prep = raw_data[bin_cols].cumsum(axis=1)
+        mid_prep = raw_data[mid_cols].cumsum(axis=1)
+
+        bin_sum = raw_data[bin_cols].sum(axis=1)
+        mid_sum = raw_data[mid_cols].sum(axis=1)
+
+        bin_prep = bin_prep.div(bin_sum, axis=0) * 100
+        mid_prep = mid_prep.div(mid_sum, axis=0) * 100
+
+        bin_data = id_data.copy()
+        mid_data = id_data.copy()
+
+        bin_data[bin_cols] = bin_prep
+        mid_data[mid_cols] = mid_prep
+
+        return bin_data, mid_data
+
+#TODO: OBTAIN X,Y DATA FOR MULTIPLE COMBINATIONS TO PLOT THE LORENZ CURVE
+#TODO: ADD CODE TO GRAPH THE LORENZ CURVES
