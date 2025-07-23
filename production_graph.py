@@ -102,7 +102,7 @@ class LorenzData:
         bin_data[bin_cols] = bin_prep
         mid_data[mid_cols] = mid_prep
 
-        return mid_data, bin_data
+        return bin_data, mid_data
 
     def prep_lorenz_graph(self, x_data, y_data):
         raw_x = pd.DataFrame(x_data)
@@ -113,8 +113,8 @@ class LorenzData:
         x_values, y_values = [], []
 
         for combo in all_combos:
-            x = raw_x.loc[raw_x["Combo"] == combo, self.mid].values.flatten().tolist()
-            y = raw_y.loc[raw_y["Combo"] == combo, self.bins].values.flatten().tolist()
+            x = raw_x.loc[raw_x["Combo"] == combo, self.bins].values.flatten().tolist()
+            y = raw_y.loc[raw_y["Combo"] == combo, self.mid].values.flatten().tolist()
             x_values.append(x)
             y_values.append(y)
 
@@ -128,4 +128,24 @@ class LorenzData:
 
         return graph_data
 
-#TODO: ADD CODE TO GRAPH THE LORENZ CURVES
+#TODO: UPDATE GRAPH TO ALLOW ALL DATA POINTS TO START FROM ZERO
+
+    def gen_lorenz_graph(self):
+        raw_x_values, raw_y_values = self.split_lorenz_data()
+        all_raw_data = self.prep_lorenz_graph(raw_x_values, raw_y_values)
+
+# TODO: PLOT TRUE EQUALITY IN RED COLOR ON THE GRAPH
+
+        plt.figure(figsize=(12, 6))
+        for combination in all_raw_data:
+            for label, plot_data in combination.items():
+                plt.plot(plot_data[0], plot_data[-1], label=label)
+        plt.xlabel(production_config.lorenz_X_label)
+        plt.ylabel(production_config.lorenz_Y_label)
+        plt.legend()
+        plt.title(production_config.lorenz_graph_title)
+
+        png_file = f"{production_config.file_name}_{list(production_config.data_particulars[production_config.current_opt].keys())[0]}_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.png"
+        plt.savefig(png_file, dpi=300, bbox_inches='tight')
+
+        logging.info(f"GRAPH GENERATED. FILE SAVED TO {png_file}")
