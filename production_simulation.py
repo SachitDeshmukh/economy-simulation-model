@@ -110,20 +110,22 @@ class NetLogoSim:
     # GROWTH DATA
     def prep_growth(self, data):
         data = pd.DataFrame(data)
-        for i in range(self.target_ticks):
-            avg_growth_rate = data.groupby("Combo")[f"Growth-rate_{i}"].mean().reset_index()
-            avg_growth_rate.rename(columns={f"Growth-rate_{i}": f"Avg-growth-rate_{i}"}, inplace=True)
-            data = data.merge(avg_growth_rate, on="Combo")
+        growth_rate_cols = [f"Growth-rate_{i}" for i in range(self.target_ticks)]
+        avg_growth_rate = data.groupby("Combo")[growth_rate_cols].mean().reset_index()
+        avg_growth_rate.columns = ["Combo"] + [f"Avg-growth-rate_{i}" for i in range(self.target_ticks)]
+        data = data.merge(avg_growth_rate, on="Combo")
         return data
 
     def clean_growth(self, data):
         data = pd.DataFrame(data)
         unique_id = ["Combo", "Workers", "Owners", "Assets", "Capital_perc", "Wages_perc", "Income_perc"]
         dataset = data.drop_duplicates(subset=unique_id)
+        avg_cols = [col for col in dataset.columns if col.startswith(production_config.growth_column_prefix)]
         clean_data = dataset[unique_id].copy()
-        for i in range(self.target_ticks):
-            clean_data[f"Avg-growth-rate_{i}"] = dataset[f"Avg-growth-rate_{i}"]
+        clean_data = pd.concat([clean_data, dataset[avg_cols]], axis=1)
         return clean_data
+
+#TODO: OPTIMIZE LORENZ PREP FUNCTION
 
     # LORENZ DATA
     def prep_lorenz(self, data, num_bins):
@@ -156,15 +158,14 @@ class NetLogoSim:
         avg_frequency_data = frequency_data.groupby("Combo").mean()
         data = data.merge(avg_frequency_data, on="Combo")
         return data
-    
+
     def clean_lorenz(self, data):
         data = pd.DataFrame(data)
         unique_id = ["Combo", "Workers", "Owners", "Assets", "Capital_perc", "Wages_perc", "Income_perc"]
         dataset = data.drop_duplicates(subset=unique_id)
+        avg_cols = [col for col in dataset.columns if col.startswith("Bin") or col.startswith("Mid")]
         clean_data = dataset[unique_id].copy()
-        for prefix in ["Bin", "Mid"]:
-            for i in range(production_config.lorenz_bins):
-                clean_data[f"{prefix}_{i+1}"] = dataset[f"{prefix}_{i+1}"]
+        clean_data = pd.concat([clean_data, dataset[avg_cols]], axis=1)
         return clean_data
 
     def prep_gini(self, data):
