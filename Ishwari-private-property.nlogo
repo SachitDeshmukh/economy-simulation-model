@@ -117,6 +117,10 @@ to generate-revenue
     let L sum [Olabour] of in-link-neighbors with [color = yellow]
     let C sum [capital] of in-link-neighbors with [color = yellow]
     set productivity productivity + (C / 1000)  ;; Capital boosts productivity
+
+    ;; Optional: visual cue for assets with 0 productivity
+    if productivity = 0 [ set color grey ]
+
     set revenue productivity * L                ;; Revenue is productivity × labour
     set cr revenue                              ;; Store current revenue
   ]
@@ -141,7 +145,6 @@ to distribute-revenue
     set capital total-revenue * percent-capital / 100
     set wages total-revenue * percent-wages / 100
     set income total-revenue * percent-owner-income / 100
-    set wealth wealth + income
 
     ;; Determine per-worker wage
     let n count in-link-neighbors with [color = blue]
@@ -153,6 +156,8 @@ to distribute-revenue
       set income income + wages
       set wages 0
     ]
+
+    set wealth wealth + income
 
     ;; Optional: visual cue for owners without capital
     if capital = 0 [ set color grey ]
@@ -254,7 +259,7 @@ num-workers
 num-workers
 0
 100
-80.0
+48.0
 1
 1
 NIL
@@ -284,7 +289,7 @@ num-assets
 num-assets
 0
 100
-65.0
+26.0
 1
 1
 NIL
