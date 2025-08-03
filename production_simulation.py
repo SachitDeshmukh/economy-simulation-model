@@ -5,7 +5,7 @@ import logging  # Logging setup for monitoring execution
 import time  # Time module for delays
 import jpype  # Interface for Java-Python interactions
 from datetime import datetime  # Date/time handling utilities
-from itertools import product, chain  # Cartesian product for param combinations
+from itertools import product  # Cartesian product for param combinations
 from joblib import Parallel, delayed  # Parallel execution for simulations
 from pynetlogo import NetLogoLink  # Interface for NetLogo simulations
 
