@@ -1,7 +1,7 @@
 
 # AGENT-BASED ECONOMY MODEL TO STUDY ECONOMIC INEQUALITY
 
-In this model, [Ishwari](https://github.com/social-stimulator) studies the phenomenon of income distribution and economic inequality in a system. This includes the ownership of assets, determination of wages, hierarchy in economic systems etc. It a **NETLOGO model** of production which analyses the dynamics of land, labour and capital - three essential factors for economic production.
+In this model, [Ishwari](https://github.com/social-stimulator) studies the phenomenon of income distribution and economic inequality in a system. This includes the ownership of assets, determination of wages, and hierarchy in economic systems. It is a **NETLOGO model** of production which analyses the dynamics of land, labour and capital - three essential factors for economic production.
 
 ## WHAT IS THE MODEL ABOUT?
 
@@ -16,9 +16,9 @@ In this model, [Ishwari](https://github.com/social-stimulator) studies the pheno
 1. Workers give their labour to the owners. In return, they receive wages which accumulate to become wealth. A certain amount of wealth is deducted for sustaining livelihood, and excess is saved.
 
 2. Owners take labour from workers, take their own labour and capital, and give it to the asset. In return, they receive revenue from the asset. The owners then divide this revenue into three components -
-    - Capital ( which is stored with the owner, and is invested back into the asset)
-    - Wages ( which go to the workers)
-    - Wealth ( which stays with the owners)
+    - Capital (which is stored with the owner, and is invested back into the asset)
+    - Wages (which go to the workers)
+    - Wealth (which stays with the owners)
 
 3. The asset has a certain level of productivity. Depending on this productivity, and the total amount of labour and capital received, the asset generates revenue. The asset then gives this revenue to the owners.
 
